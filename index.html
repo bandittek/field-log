@@ -1477,7 +1477,7 @@ function clearCaseFields() {
 }
 
 function onCaseInput(val) {
-  const match = knownCases.find(p => p.case.toLowerCase() === val.toLowerCase());
+  const match = knownCases.find(p => p.case && p.case.toLowerCase() === val.toLowerCase());
   if (match) {
     document.getElementById('clientLast').value = match.client;
     if (match.clientFirst) document.getElementById('clientFirst').value = match.clientFirst;
@@ -1487,7 +1487,7 @@ function onCaseInput(val) {
 }
 
 function onClientInput(val) {
-  const matches = knownCases.filter(p => p.client.toLowerCase() === val.toLowerCase());
+  const matches = knownCases.filter(p => p.client && p.client.toLowerCase() === val.toLowerCase());
   if (matches.length === 1) {
     document.getElementById('caseNum').value = matches[0].case;
     if (matches[0].clientFirst) document.getElementById('clientFirst').value = matches[0].clientFirst;
@@ -1505,7 +1505,7 @@ function cleanName(val) {
 
 function saveKnownCase(caseNum, client, clientFirst) {
   if (!caseNum || !client) return;
-  const exists = knownCases.find(p => p.case.toLowerCase() === caseNum.toLowerCase());
+  const exists = knownCases.find(p => p.case && p.case.toLowerCase() === caseNum.toLowerCase());
   if (!exists) {
     knownCases.push({ case: caseNum, client, clientFirst: clientFirst || '' });
     localStorage.setItem('tli_cases', JSON.stringify(knownCases));
@@ -2607,9 +2607,9 @@ async function submitEntry() {
   }
 
   // Block if case number exists but name doesn't match
-  const existingCase = knownCases.find(p => p.case.toLowerCase() === base.case.toLowerCase());
+  const existingCase = knownCases.find(p => p.case && p.case.toLowerCase() === base.case.toLowerCase());
   if (existingCase) {
-    const lastMismatch = existingCase.client.toLowerCase() !== base.client.toLowerCase();
+    const lastMismatch = existingCase.client && existingCase.client.toLowerCase() !== base.client.toLowerCase();
     const firstMismatch = existingCase.clientFirst && base.clientFirst && existingCase.clientFirst.toLowerCase() !== base.clientFirst.toLowerCase();
     if (lastMismatch || firstMismatch) {
       const existingName = existingCase.clientFirst ? existingCase.client + ', ' + existingCase.clientFirst : existingCase.client;

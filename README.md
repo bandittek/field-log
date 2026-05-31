@@ -10,11 +10,11 @@ Each investigator points the app at their firm's BanditTek server. Setup takes a
 
 ### Configure your BanditTek host
 
-1. Open the app: **https://tlee612-lab.github.io/field-log/**
+1. Open the app: **https://field.bandittek.com/**
 2. Tap the **⚙ Settings** button
 3. Under **Cloud Sync**, paste your BanditTek host URL (e.g. `https://your-bandittek-host.com` — no trailing slash) and tap **Save**
 4. Tap **Test** — you should see ✓ Connected to bandit-tek
-5. (Optional, for Bandit chat) In BanditTek, open **⚙ Settings → MY USER UID** and tap **Copy**. Back in field-log, paste it into **Cloud Sync → BT User UID** and tap **Test Bandit** — you should see ✓ Bandit endpoint reachable. The 🦝 burrow appears bottom-right.
+5. (Optional, for Bandit chat) In BanditTek, open **⚙ Settings → MY BANDITTEK ID** and tap **Copy** (it looks like `lee:253a3fd8-…` — firm + user; a bare UID for single-firm accounts). Back in field-log, paste it into **Cloud Sync → MY BANDITTEK ID** and tap **Test Bandit** — you should see ✓ Bandit endpoint reachable. The 🦝 burrow appears bottom-right.
 6. Under **AI Assist**, pick your AI provider and enter your API key:
    - **Anthropic (Claude)** — get key at [console.anthropic.com](https://console.anthropic.com)
    - **Google Gemini** — get key at [aistudio.google.com](https://aistudio.google.com)
@@ -127,7 +127,7 @@ For best results include in your dictated notes:
 Just open the live URL in your browser. All investigators use the same app but each is pointed at their firm's BanditTek host. Any updates pushed to the repo go live for everyone automatically.
 
 ```
-https://tlee612-lab.github.io/field-log/
+https://field.bandittek.com/
 ```
 
 ### Option B — Run your own independent copy

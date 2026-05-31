@@ -616,11 +616,11 @@
             Your BanditTek server's base URL (without trailing slash).
           </div>
           <div class="config-row" style="margin-top:14px">
-            <label>BT User UID</label>
-            <input type="text" id="btUid" placeholder="Paste your BT user UID" autocomplete="off" spellcheck="false">
+            <label>MY BANDITTEK ID</label>
+            <input type="text" id="btUid" placeholder="e.g. lee:253a3fd8-…  (or a bare UID)" autocomplete="off" spellcheck="false">
           </div>
           <div style="margin-top:6px;color:var(--muted);font-size:11px">
-            Required for ALL syncs to BanditTek (activities, expenses, case creation, case list, Bandit chat). Copy from BanditTek → Settings → MY USER UID.
+            Required for ALL syncs to BanditTek (activities, expenses, case creation, case list, Bandit chat). Copy from BanditTek → Settings → MY BANDITTEK ID — it looks like <code>lee:253a3fd8-…</code> (firm + user). A bare UID still works for single-firm accounts.
           </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="ai-btn secondary" style="max-width:100px" onclick="testWebhook()">Test</button>
@@ -1429,11 +1429,11 @@ async function fetchRemoteCases(verbose = false) {
   // Slice 8 — btUid required as a query param. Surface UX-friendly
   // error if missing; server returns 401 anyway, but the client-side
   // check spares the round-trip.
-  if (!cfg.btUid) { if (verbose) showToast('No BanditTek UID configured — paste from BT Settings → My UID', true); return; }
+  if (!cfg.btUid) { if (verbose) showToast('No BanditTek ID configured — paste from BT Settings → MY BANDITTEK ID', true); return; }
   try {
     const res = await fetch(`${cfg.btHostUrl}/api/field-log/cases?btUid=${encodeURIComponent(cfg.btUid)}`);
     if (res.status === 401) {
-      if (verbose) showToast('Your BanditTek UID is invalid or expired. Re-paste from BanditTek → Settings → My UID.', true);
+      if (verbose) showToast('Your BanditTek ID is invalid or expired. Re-paste from BanditTek → Settings → MY BANDITTEK ID.', true);
       return;
     }
     if (!res.ok) { if (verbose) showToast(`Refresh failed (HTTP ${res.status})`, true); return; }
@@ -1513,13 +1513,49 @@ function saveKnownCase(caseNum, client, clientFirst) {
   }
 }
 
+// S7.fix-45 — "MY BANDITTEK ID" is the combined firmId:uid form (one
+// paste, one source of truth). The /api/field-log/* endpoints parse it
+// server-side (#44, 26c017a). The /api/bandit/* endpoints take a BARE
+// uid and were NOT updated by #44, so btBareUid() strips the firmId:
+// prefix for those calls. A bare UID (no colon) stays valid for
+// single-firm back-compat.
+function btBareUid() {
+  const v = (cfg.btUid || '').trim();
+  const i = v.indexOf(':');
+  return i === -1 ? v : v.slice(i + 1);
+}
+
+// Accept a bare UID (back-compat) OR the combined firmId:uid form.
+// Reject whitespace, empty halves (':', 'lee:', ':uid'), or extra colons.
+function isValidBtId(v) {
+  const s = (v || '').trim();
+  if (!s || /\s/.test(s)) return false;
+  const i = s.indexOf(':');
+  if (i === -1) return true;                  // bare uid
+  const firmId = s.slice(0, i);
+  const uid = s.slice(i + 1);
+  if (!firmId || !uid) return false;          // ':', 'lee:', ':uid'
+  if (uid.indexOf(':') !== -1) return false;  // '::' / extra colons
+  return true;
+}
+
 async function saveConfig() {
   cfg.btHostUrl = document.getElementById('btHostUrl').value.trim();
-  // Slice 1b — BT user UID (Bandit chat identity). Same trim pattern; the
-  // input may not exist on older shipped instances, so guard with optional
-  // chaining + fallback.
+  // Slice 1b — BanditTek ID (firmId:uid for multi-firm; bare uid for
+  // single-firm). Same trim pattern; the input may not exist on older
+  // shipped instances, so guard with optional chaining + fallback.
   const btUidEl = document.getElementById('btUid');
-  if (btUidEl) cfg.btUid = btUidEl.value.trim();
+  if (btUidEl) {
+    const btUidVal = btUidEl.value.trim();
+    // S7.fix-45 — validate the combined-or-bare shape before persisting
+    // so a malformed paste fails loud here rather than silently 401ing
+    // every sync. Empty is allowed (clears the field).
+    if (btUidVal && !isValidBtId(btUidVal)) {
+      showToast('Invalid BanditTek ID — copy it from BanditTek → Settings → MY BANDITTEK ID (e.g. lee:253a3fd8-… or a bare UID).', true);
+      return;
+    }
+    cfg.btUid = btUidVal;
+  }
   cfg.anthropicKey = sanitizeKey(document.getElementById('anthropicKey').value);
   cfg.geminiKey = sanitizeKey(document.getElementById('geminiKey').value);
   cfg.openaiKey = sanitizeKey(document.getElementById('openaiKey').value);
@@ -1588,7 +1624,7 @@ async function testBandit() {
   const uidEl = document.getElementById('btUid');
   const uidValue = (uidEl && uidEl.value.trim()) || cfg.btUid || '';
   if (!hostValue) { showToast('Paste BT host URL first', true); return; }
-  if (!uidValue) { showToast('Paste BT User UID first', true); return; }
+  if (!uidValue) { showToast('Paste your BanditTek ID first', true); return; }
   const base = String(hostValue).trim().replace(/\/+$/, '');
   try {
     const res = await fetch(`${base}/api/bandit/test`, {
@@ -2840,7 +2876,7 @@ async function fetchBanditAnomalySummary() {
   if (!cfg.btHostUrl || !cfg.btUid) return;
   try {
     const base = String(cfg.btHostUrl).trim().replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/bandit/anomalies-summary?uid=${encodeURIComponent(cfg.btUid)}`);
+    const res = await fetch(`${base}/api/bandit/anomalies-summary?uid=${encodeURIComponent(btBareUid())}`);
     if (!res.ok) return;
     const data = await res.json();
     if (typeof data.count === 'number') {
@@ -3123,7 +3159,7 @@ async function sendBanditMessage() {
       method: 'POST',
       mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: banditMessages, uid: cfg.btUid }),
+      body: JSON.stringify({ messages: banditMessages, uid: btBareUid() }),
     });
     let data = {};
     try { data = await res.json(); } catch (_) { /* non-JSON body */ }

@@ -1266,6 +1266,27 @@ if (!cfg.btUid) {
       if (uidEl) uidEl.value = cfg.btUid || '';
     }
   }
+  // S7.fix-52 — one-scan setup. A ?id=<combined firmId:uid> param (from the
+  // BT Settings QR / setup link) prefills btUid for a first-time user — only
+  // when btUid is still empty after every fallback above. An existing ID is
+  // never overwritten (the param is setup convenience, not an override). The
+  // param is stripped from the URL afterward so a refresh can't re-apply it
+  // once the user has changed their value.
+  try {
+    const setupId = new URL(window.location.href).searchParams.get('id');
+    if (setupId && !cfg.btUid) {
+      cfg.btUid = setupId.trim();
+      localStorage.setItem('tli_cfg', JSON.stringify(cfg));
+      const uidEl = document.getElementById('btUid');
+      if (uidEl) uidEl.value = cfg.btUid;
+      if (typeof showToast === 'function') showToast('BanditTek ID set from setup link');
+    }
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('id')) {
+      u.searchParams.delete('id');
+      window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+    }
+  } catch (e) { /* best-effort setup-link handling */ }
 })();
 
 let entries = JSON.parse(localStorage.getItem('tli_entries') || '[]');

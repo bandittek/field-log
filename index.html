@@ -706,7 +706,7 @@
       <button id="clearSyncedBtn" onclick="clearSynced()" class="ai-btn secondary" style="display:none;font-size:10px;padding:5px 12px">Clear Synced</button>
     </div>
   </div>
-  <p style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">This device only. Google Sheets is the complete record.</p>
+  <p style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px">This device only. BanditTek is the complete record.</p>
   <div id="recentLog"></div>
 </main>
 <div class="toast" id="toast"></div>
@@ -1206,7 +1206,8 @@ async function showCaseHours(caseNum) {
   }
 }
 // ────────────────────────────────────────────────────────────────────────────
-// Load config with fallback chain: localStorage → sessionStorage → IndexedDB
+// Load config with fallback chain: localStorage → sessionStorage → IndexedDB → default
+const DEFAULT_BT_HOST = 'https://app.bandittek.com';
 let cfg = JSON.parse(localStorage.getItem('tli_cfg') || '{"btHostUrl":"","btUid":"","anthropicKey":"","geminiKey":"","openaiKey":"","aiProvider":"anthropic","devMode":false}');
 if (!cfg.anthropicKey && cfg.apiKey) cfg.anthropicKey = cfg.apiKey;
 
@@ -1247,6 +1248,15 @@ if (!cfg.btUid) {
       await saveToIndexedDB('btHostUrl', idbUrl);
       document.getElementById('btHostUrl').value = cfg.btHostUrl || '';
     }
+  }
+  // Lowest-priority fallback — a brand-new user (nothing in localStorage,
+  // sessionStorage, or IndexedDB) gets the production BT host pre-filled so
+  // they only need to paste MY BANDITTEK ID. In-memory only; the normal Save
+  // flow persists it, so a user stays free to clear cfg and re-default.
+  if (!cfg.btHostUrl) {
+    cfg.btHostUrl = DEFAULT_BT_HOST;
+    document.getElementById('btHostUrl').value = cfg.btHostUrl;
+    setUrlLock(true);
   }
   if (!cfg.btUid) {
     const idbUid = await loadFromIndexedDB('btUid');

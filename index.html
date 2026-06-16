@@ -616,11 +616,11 @@
             Your BanditTek server's base URL (without trailing slash).
           </div>
           <div class="config-row" style="margin-top:14px">
-            <label>MY BANDITTEK ID</label>
-            <input type="text" id="btUid" placeholder="e.g. lee:253a3fd8-…  (or a bare UID)" autocomplete="off" spellcheck="false">
+            <label>FIELD-LOG TOKEN</label>
+            <input type="text" id="btUid" placeholder="Paste your field-log token (flt_...)" autocomplete="off" spellcheck="false">
           </div>
           <div style="margin-top:6px;color:var(--muted);font-size:11px">
-            Required for ALL syncs to BanditTek (activities, expenses, case creation, case list, Bandit chat). Copy from BanditTek → Settings → MY BANDITTEK ID — it looks like <code>lee:253a3fd8-…</code> (firm + user). A bare UID still works for single-firm accounts.
+            Required for ALL syncs to BanditTek (activities, expenses, case creation, case list, Bandit chat). Generate a token in BanditTek &rarr; Settings &rarr; FIELD-LOG TOKEN and paste it here &mdash; it looks like <code>flt_...</code>. (An older firm:uid or bare UID still works during the transition.)
           </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="ai-btn secondary" style="max-width:100px" onclick="testWebhook()">Test</button>
@@ -1120,7 +1120,7 @@ async function createCaseFromPae() {
     if (res.status === 401 && data && data.code === 'FIELDLOG_UID_INVALID') {
       // Slice 8 — field-log identity binding rejected our btUid.
       // Surface a clear toast; the finally block restores button state.
-      showToast('Your BanditTek UID is invalid or expired. Re-paste from BanditTek → Settings → My UID.', true);
+      showToast('Your BanditTek UID is invalid or expired. Re-paste from BanditTek → Settings → FIELD-LOG TOKEN.', true);
       return;
     }
 
@@ -1251,7 +1251,7 @@ if (!cfg.btUid) {
   }
   // Lowest-priority fallback — a brand-new user (nothing in localStorage,
   // sessionStorage, or IndexedDB) gets the production BT host pre-filled so
-  // they only need to paste MY BANDITTEK ID. In-memory only; the normal Save
+  // they only need to paste FIELD-LOG TOKEN. In-memory only; the normal Save
   // flow persists it, so a user stays free to clear cfg and re-default.
   if (!cfg.btHostUrl) {
     cfg.btHostUrl = DEFAULT_BT_HOST;
@@ -1460,11 +1460,11 @@ async function fetchRemoteCases(verbose = false) {
   // Slice 8 — btUid required as a query param. Surface UX-friendly
   // error if missing; server returns 401 anyway, but the client-side
   // check spares the round-trip.
-  if (!cfg.btUid) { if (verbose) showToast('No BanditTek ID configured — paste from BT Settings → MY BANDITTEK ID', true); return; }
+  if (!cfg.btUid) { if (verbose) showToast('No BanditTek ID configured — paste from BT Settings → FIELD-LOG TOKEN', true); return; }
   try {
     const res = await fetch(`${cfg.btHostUrl}/api/field-log/cases?btUid=${encodeURIComponent(cfg.btUid)}`);
     if (res.status === 401) {
-      if (verbose) showToast('Your BanditTek ID is invalid or expired. Re-paste from BanditTek → Settings → MY BANDITTEK ID.', true);
+      if (verbose) showToast('Your BanditTek ID is invalid or expired. Re-paste from BanditTek → Settings → FIELD-LOG TOKEN.', true);
       return;
     }
     if (!res.ok) { if (verbose) showToast(`Refresh failed (HTTP ${res.status})`, true); return; }
@@ -1544,7 +1544,7 @@ function saveKnownCase(caseNum, client, clientFirst) {
   }
 }
 
-// S7.fix-45 — "MY BANDITTEK ID" is the combined firmId:uid form (one
+// S7.fix-45 — "FIELD-LOG TOKEN" is the combined firmId:uid form (one
 // paste, one source of truth). The /api/field-log/* endpoints parse it
 // server-side (#44, 26c017a). The /api/bandit/* endpoints take a BARE
 // uid and were NOT updated by #44, so btBareUid() strips the firmId:
@@ -1561,6 +1561,9 @@ function btBareUid() {
 function isValidBtId(v) {
   const s = (v || '').trim();
   if (!s || /\s/.test(s)) return false;
+  // FIELD-LOG-BINDING — a per-investigator SECRET token (flt_ + base64url).
+  // The token IS the auth; the server hash-validates it.
+  if (s.startsWith('flt_')) return /^flt_[A-Za-z0-9_-]+$/.test(s);
   const i = s.indexOf(':');
   if (i === -1) return true;                  // bare uid
   const firmId = s.slice(0, i);
@@ -1582,7 +1585,7 @@ async function saveConfig() {
     // so a malformed paste fails loud here rather than silently 401ing
     // every sync. Empty is allowed (clears the field).
     if (btUidVal && !isValidBtId(btUidVal)) {
-      showToast('Invalid BanditTek ID — copy it from BanditTek → Settings → MY BANDITTEK ID (e.g. lee:253a3fd8-… or a bare UID).', true);
+      showToast('Invalid BanditTek ID — copy it from BanditTek → Settings → FIELD-LOG TOKEN (e.g. lee:253a3fd8-… or a bare UID).', true);
       return;
     }
     cfg.btUid = btUidVal;
